@@ -53,7 +53,7 @@ import org.apache.logging.log4j.Logger;
 import ru.serce.jnrfuse.FuseFillDir;
 import ru.serce.jnrfuse.struct.FileStat;
 
-class DicomFuseHelper {
+class DicomFuseFSHelper {
 
   private static final Logger LOGGER = LogManager.getLogger();
   private final Parameters parameters;
@@ -65,7 +65,7 @@ class DicomFuseHelper {
   private final Instant defaultInstant;
 
 
-  DicomFuseHelper(Parameters parameters, DicomPathCacher dicomPathCacher) {
+  DicomFuseFSHelper(Parameters parameters, DicomPathCacher dicomPathCacher) {
     this.parameters = parameters;
     downloadCacher = new DownloadCacher(parameters);
     uploadCacher = new UploadCacher();
@@ -180,36 +180,36 @@ class DicomFuseHelper {
     }
   }
 
-  void setAttr(DicomPath dicomPath, DicomFuse dicomFuse, FileStat fileStat)
+  void setAttr(DicomPath dicomPath, DicomFuseFS dicomFuseFS, FileStat fileStat)
       throws DicomFuseException {
     switch (dicomPath.getDicomPathLevel()) {
       case DATASET:
-        setStat(dicomFuse, fileStat, FileStat.S_IFDIR | 0777);
+        setStat(dicomFuseFS, fileStat, FileStat.S_IFDIR | 0777);
         break;
       case DICOM_STORE:
-        setStat(dicomFuse, fileStat, FileStat.S_IFDIR | 0777);
+        setStat(dicomFuseFS, fileStat, FileStat.S_IFDIR | 0777);
         break;
       case STUDY:
-        setStat(dicomFuse, fileStat, FileStat.S_IFDIR | 0777);
+        setStat(dicomFuseFS, fileStat, FileStat.S_IFDIR | 0777);
         break;
       case SERIES:
-        setStat(dicomFuse, fileStat, FileStat.S_IFDIR | 0777);
+        setStat(dicomFuseFS, fileStat, FileStat.S_IFDIR | 0777);
         break;
       case INSTANCE:
       case TEMP_FILE_IN_DICOM_STORE:
       case TEMP_FILE_IN_SERIES:
-        setStat(dicomFuse, fileStat, FileStat.S_IFREG | 0666, dicomPath);
+        setStat(dicomFuseFS, fileStat, FileStat.S_IFREG | 0666, dicomPath);
         break;
       default:
         throw new DicomFuseException("Error level!");
     }
   }
 
-  private void setStat(DicomFuse dicomFuse, FileStat fileStat, int perm) throws DicomFuseException {
-    setStat(dicomFuse, fileStat, perm, null);
+  private void setStat(DicomFuseFS dicomFuseFS, FileStat fileStat, int perm) throws DicomFuseException {
+    setStat(dicomFuseFS, fileStat, perm, null);
   }
 
-  private void setStat(DicomFuse dicomFuse, FileStat fileStat, int perm, DicomPath dicomPath)
+  private void setStat(DicomFuseFS dicomFuseFS, FileStat fileStat, int perm, DicomPath dicomPath)
       throws DicomFuseException {
     fileStat.st_mode.set(perm);
     fileStat.st_nlink.set(1);
@@ -228,8 +228,8 @@ class DicomFuseHelper {
     }
 
     // set uid and gid
-    fileStat.st_uid.set(dicomFuse.getContext().uid.get());
-    fileStat.st_gid.set(dicomFuse.getContext().gid.get());
+    fileStat.st_uid.set(dicomFuseFS.getContext().uid.get());
+    fileStat.st_gid.set(dicomFuseFS.getContext().gid.get());
 
     // set default data, it needs to be implemented because
     // FileStat contains garbage from uninitialized memory in getattr.

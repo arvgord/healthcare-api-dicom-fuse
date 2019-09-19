@@ -22,6 +22,7 @@ import com.google.dicomwebfuse.entities.DicomPath;
 import com.google.dicomwebfuse.entities.DicomPathLevel;
 import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.fuse.cacher.DicomPathCacher;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jnr.ffi.Platform.OS;
 import jnr.ffi.Pointer;
 import jnr.ffi.types.off_t;
@@ -35,18 +36,18 @@ import ru.serce.jnrfuse.struct.FileStat;
 import ru.serce.jnrfuse.struct.FuseFileInfo;
 import ru.serce.jnrfuse.struct.Statvfs;
 
-public class DicomFuse extends FuseStubFS {
+public class DicomFuseFS extends FuseStubFS {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private final DicomFuseHelper dicomFuseHelper;
+  private final DicomFuseFSHelper dicomFuseFSHelper;
   private final Parameters parameters;
   private final DicomPathParser dicomPathParser;
   private final OS os;
 
-  public DicomFuse(Parameters parameters) {
+  public DicomFuseFS(Parameters parameters) {
     this.parameters = parameters;
     DicomPathCacher dicomPathCacher = new DicomPathCacher();
-    dicomFuseHelper = new DicomFuseHelper(parameters, dicomPathCacher);
+    dicomFuseFSHelper = new DicomFuseFSHelper(parameters, dicomPathCacher);
     dicomPathParser = new DicomPathParser(dicomPathCacher);
     os = parameters.getOs();
   }
@@ -56,14 +57,14 @@ public class DicomFuse extends FuseStubFS {
     LOGGER.debug("getattr " + path);
     DicomPath dicomPath;
     try {
-      dicomFuseHelper.checkPath(path);
+      dicomFuseFSHelper.checkPath(path);
       dicomPath = dicomPathParser.parsePath(path);
     } catch (DicomFuseException e) {
       return -ErrorCodes.ENOENT();
     }
     try {
-      dicomFuseHelper.checkExistingObject(dicomPath);
-      dicomFuseHelper.setAttr(dicomPath, this, fileStat);
+      dicomFuseFSHelper.checkExistingObject(dicomPath);
+      dicomFuseFSHelper.setAttr(dicomPath, this, fileStat);
     } catch (DicomFuseException e) {
       LOGGER.debug("getattr error!", e);
       return -ErrorCodes.ENOENT();
@@ -79,8 +80,8 @@ public class DicomFuse extends FuseStubFS {
     filler.apply(buf, "..", null, 0); // add default folder
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path);
-      dicomFuseHelper.checkExistingObject(dicomPath);
-      dicomFuseHelper.fillFolder(dicomPath, buf, filler);
+      dicomFuseFSHelper.checkExistingObject(dicomPath);
+      dicomFuseFSHelper.fillFolder(dicomPath, buf, filler);
     } catch (DicomFuseException e) {
       LOGGER.error("readdir error!", e);
       return -ErrorCodes.ENOENT();
@@ -93,7 +94,7 @@ public class DicomFuse extends FuseStubFS {
     LOGGER.debug("opendir " + path);
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path);
-      dicomFuseHelper.updateDir(dicomPath);
+      dicomFuseFSHelper.updateDir(dicomPath);
     } catch (DicomFuseException e) {
       LOGGER.error("readdir error!", e);
       return -ErrorCodes.ENOENT();
@@ -105,8 +106,12 @@ public class DicomFuse extends FuseStubFS {
   public int read(String path, Pointer buf, @size_t long size, @off_t long offset,
       FuseFileInfo fi) {
     try {
-      DicomPath dicomPath = dicomPathParser.parsePath(path);
-      return dicomFuseHelper.readInstance(dicomPath, buf, (int) size, offset);
+      if (parameters.getCacheTime().getInstanceFilesCacheTime() > 0) {
+        DicomPath dicomPath = dicomPathParser.parsePath(path);
+        return dicomFuseFSHelper.readInstance(dicomPath, buf, (int) size, offset);
+      } else {
+        return 0;
+      }
     } catch (DicomFuseException e) {
       LOGGER.error("read error!", e);
       return -ErrorCodes.EIO();
@@ -117,7 +122,7 @@ public class DicomFuse extends FuseStubFS {
   public int write(String path, Pointer buf, long size, long offset, FuseFileInfo fi) {
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path);
-      return dicomFuseHelper.writeInstance(dicomPath, buf, (int) size, offset);
+      return dicomFuseFSHelper.writeInstance(dicomPath, buf, (int) size, offset);
     } catch (DicomFuseException e) {
       LOGGER.error("write error!", e);
       return -ErrorCodes.EIO();
@@ -128,8 +133,12 @@ public class DicomFuse extends FuseStubFS {
   public int open(String path, FuseFileInfo fi) {
     LOGGER.debug("open " + path);
     try {
-      DicomPath dicomPath = dicomPathParser.parsePath(path);
-      dicomFuseHelper.cacheInstanceData(dicomPath);
+      if (parameters.getCacheTime().getInstanceFilesCacheTime() > 0) {
+        DicomPath dicomPath = dicomPathParser.parsePath(path);
+        dicomFuseFSHelper.cacheInstanceData(dicomPath);
+      } else {
+        return 0;
+      }
     } catch (DicomFuseException e) {
       LOGGER.error("open error!", e);
       return -ErrorCodes.EIO();
@@ -141,14 +150,14 @@ public class DicomFuse extends FuseStubFS {
   public int flush(String path, FuseFileInfo fi) {
     LOGGER.debug("flush " + path);
     try {
-      dicomFuseHelper.checkPath(path);
+      dicomFuseFSHelper.checkPath(path);
     } catch (DicomFuseException e) {
       LOGGER.debug(e);
       return -ErrorCodes.ENOENT();
     }
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path);
-      dicomFuseHelper.flushInstance(dicomPath);
+      dicomFuseFSHelper.flushInstance(dicomPath);
     } catch (DicomFuseException e) {
       LOGGER.error("flush error!", e);
       if (os == LINUX) {
@@ -166,14 +175,14 @@ public class DicomFuse extends FuseStubFS {
   public int create(String path, long mode, FuseFileInfo fi) {
     LOGGER.debug("create " + path);
     try {
-      dicomFuseHelper.checkPath(path);
+      dicomFuseFSHelper.checkPath(path);
     } catch (DicomFuseException e) {
       LOGGER.debug(e);
       return -ErrorCodes.ENOENT();
     }
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path, Command.CREATE);
-      dicomFuseHelper.createTemporaryInstance(dicomPath);
+      dicomFuseFSHelper.createTemporaryInstance(dicomPath);
     } catch (DicomFuseException e) {
       LOGGER.error("create error!", e);
       return -ErrorCodes.EIO();
@@ -186,7 +195,7 @@ public class DicomFuse extends FuseStubFS {
     LOGGER.debug("unlink " + path);
     if (parameters.isEnableDeletion()) {
       try {
-        dicomFuseHelper.checkPath(path);
+        dicomFuseFSHelper.checkPath(path);
       } catch (DicomFuseException e) {
         LOGGER.debug(e);
         return -ErrorCodes.ENOENT();
@@ -198,7 +207,7 @@ public class DicomFuse extends FuseStubFS {
         if (dicomPath.getDicomPathLevel() != DicomPathLevel.INSTANCE) {
           return -ErrorCodes.ENOENT();
         }
-        dicomFuseHelper.unlinkInstance(dicomPath);
+        dicomFuseFSHelper.unlinkInstance(dicomPath);
       } catch (DicomFuseException e) {
         LOGGER.error("unlink error!", e);
         return -ErrorCodes.EIO();
@@ -264,5 +273,9 @@ public class DicomFuse extends FuseStubFS {
   @Override
   public int chmod(String path, long mode) {
     return super.chmod(path, mode);
+  }
+
+  public boolean isDicomFuseMounted() {
+    return mounted.get();
   }
 }

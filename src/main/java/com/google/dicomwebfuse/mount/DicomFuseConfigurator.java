@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.dicomwebfuse;
+package com.google.dicomwebfuse.mount;
 
 import com.beust.jcommander.JCommander;
 import com.google.dicomwebfuse.log4j2.Log4j2LoggerConfigurator;
-import com.google.dicomwebfuse.parser.Arguments;
+import com.google.dicomwebfuse.parser.MainArguments;
+import java.util.ResourceBundle;
 
-public class App {
+public class DicomFuseConfigurator {
 
-  public static void main(String[] args) {
-
+  public static <T extends MainArguments> void configureAndMountDicomFuse(String[] args, T arguments) {
     Log4j2LoggerConfigurator log4j2LoggerConfigurator = new Log4j2LoggerConfigurator();
     log4j2LoggerConfigurator.configureLogger();
 
-    Arguments arguments = new Arguments();
     JCommander jCommander = JCommander.newBuilder()
         .addObject(arguments)
+        .resourceBundle(ResourceBundle.getBundle("cli-messages"))
         .programName("DICOMFuse")
         .build();
     jCommander.parse(args);
@@ -37,7 +37,7 @@ public class App {
       return;
     }
 
-    AppMountProcess appMountProcess = new AppMountProcess();
-    appMountProcess.startMountProcess(arguments);
+    DicomFuseMounter dicomFuseMounter = new DicomFuseMounter();
+    dicomFuseMounter.mountDicomFuse(arguments);
   }
 }

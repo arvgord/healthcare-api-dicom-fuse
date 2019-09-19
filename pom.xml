@@ -10,7 +10,7 @@
 
   <groupId>com.google</groupId>
   <artifactId>healthcare-api-dicom-fuse</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
 
   <repositories>
     <repository>
@@ -115,7 +115,7 @@
             <configuration>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.google.dicomwebfuse.App</mainClass>
+                  <mainClass>com.google.dicomwebfuse.DicomFuse</mainClass>
                 </transformer>
               </transformers>
             </configuration>

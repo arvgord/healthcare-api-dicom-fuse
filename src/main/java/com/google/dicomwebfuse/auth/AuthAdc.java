@@ -33,20 +33,25 @@ public class AuthAdc {
     this.googleCredentials = googleCredentials;
   }
 
-  public AuthAdc() {
-  }
-
-  public void createCredentials(Path keyPath) throws IOException {
-    InputStream inputStream = new FileInputStream(keyPath.toFile());
-    googleCredentials = GoogleCredentials.fromStream(inputStream).createScoped(SCOPES);
-  }
-
-  public void createCredentials() throws IOException {
-    googleCredentials = GoogleCredentials.getApplicationDefault().createScoped(SCOPES);
+  public AuthAdc(Path keyPath) throws IOException {
+    if (keyPath == null) {
+      createCredentials();
+    } else {
+      createCredentials(keyPath);
+    }
   }
 
   public GoogleCredentials getCredentials() throws IOException {
     googleCredentials.getRequestMetadata(); // Update token if it necessary.
     return googleCredentials;
+  }
+
+  private void createCredentials(Path keyPath) throws IOException {
+    InputStream inputStream = new FileInputStream(keyPath.toFile());
+    googleCredentials = GoogleCredentials.fromStream(inputStream).createScoped(SCOPES);
+  }
+
+  private void createCredentials() throws IOException {
+    googleCredentials = GoogleCredentials.getApplicationDefault().createScoped(SCOPES);
   }
 }

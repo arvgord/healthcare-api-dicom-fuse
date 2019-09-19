@@ -17,25 +17,49 @@ package com.google.dicomwebfuse.fuse;
 import com.google.dicomwebfuse.dao.FuseDao;
 import com.google.dicomwebfuse.entities.CloudConf;
 import com.google.dicomwebfuse.entities.cache.CacheTime;
-import com.google.dicomwebfuse.parser.Arguments;
+import com.google.dicomwebfuse.parser.FuseArguments;
+import com.google.dicomwebfuse.parser.FuseTestArguments;
+import java.nio.file.Path;
 import jnr.ffi.Platform.OS;
 
 public class Parameters {
 
   private final FuseDao fuseDAO;
+  private final OS os;
   private final CloudConf cloudConf;
   private final CacheTime cacheTime;
   private final long cacheSize;
   private final boolean enableDeletion;
-  private final OS os;
+  private final Path downloadStore;
+  private final Path uploadStore;
+  private final int maxThreads;
+  private final int iterations;
 
-  public Parameters(FuseDao fuseDAO, Arguments arguments, OS os) {
+  public Parameters(FuseDao fuseDAO, OS os, FuseArguments fuseArguments) {
     this.fuseDAO = fuseDAO;
-    this.cloudConf = arguments.cloudConf;
-    this.cacheTime = arguments.cacheTime;
-    this.cacheSize = arguments.cacheSize;
-    this.enableDeletion = arguments.enableDeletion;
     this.os = os;
+    this.cloudConf = fuseArguments.cloudConf;
+    this.cacheTime = fuseArguments.cacheTime;
+    this.cacheSize = fuseArguments.cacheSize;
+    this.enableDeletion = fuseArguments.enableDeletion;
+    this.downloadStore = null;
+    this.uploadStore = null;
+    this.maxThreads = 0;
+    this.iterations = 0;
+  }
+
+  public Parameters(FuseDao fuseDAO, OS os, FuseTestArguments fuseTestArguments,
+      CacheTime cacheTime, long cacheSize) {
+    this.fuseDAO = fuseDAO;
+    this.os = os;
+    this.cloudConf = fuseTestArguments.cloudConf;
+    this.enableDeletion = fuseTestArguments.enableDeletion;
+    this.downloadStore = fuseTestArguments.downloadStore;
+    this.uploadStore = fuseTestArguments.uploadStore;
+    this.maxThreads = fuseTestArguments.maxTreads;
+    this.iterations = fuseTestArguments.iterations;
+    this.cacheTime = cacheTime;
+    this.cacheSize = cacheSize;
   }
 
   public FuseDao getFuseDAO() {
@@ -60,5 +84,21 @@ public class Parameters {
 
   OS getOs() {
     return os;
+  }
+
+  public Path getDownloadStore() {
+    return downloadStore;
+  }
+
+  public Path getUploadStore() {
+    return uploadStore;
+  }
+
+  public int getMaxThreads() {
+    return maxThreads;
+  }
+
+  public int getIterations() {
+    return iterations;
   }
 }
