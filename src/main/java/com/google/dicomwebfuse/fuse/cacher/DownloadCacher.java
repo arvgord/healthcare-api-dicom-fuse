@@ -80,6 +80,10 @@ public class DownloadCacher {
     return downloadedFiles.getIfPresent(dicomPath);
   }
 
+  public void clearCache() {
+    downloadedFiles.invalidateAll();
+  }
+
   public void removePath(DicomPath dicomPath) {
     downloadedFiles.invalidate(dicomPath);
   }

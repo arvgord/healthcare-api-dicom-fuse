@@ -22,7 +22,7 @@ import com.google.dicomwebfuse.entities.DicomPath;
 import com.google.dicomwebfuse.entities.DicomPathLevel;
 import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.fuse.cacher.DicomPathCacher;
-import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.dicomwebfuse.fuse.cacher.DownloadCacher;
 import jnr.ffi.Platform.OS;
 import jnr.ffi.Pointer;
 import jnr.ffi.types.off_t;
@@ -44,10 +44,10 @@ public class DicomFuseFS extends FuseStubFS {
   private final DicomPathParser dicomPathParser;
   private final OS os;
 
-  public DicomFuseFS(Parameters parameters) {
+  public DicomFuseFS(Parameters parameters, DownloadCacher downloadCacher) {
     this.parameters = parameters;
     DicomPathCacher dicomPathCacher = new DicomPathCacher();
-    dicomFuseFSHelper = new DicomFuseFSHelper(parameters, dicomPathCacher);
+    dicomFuseFSHelper = new DicomFuseFSHelper(parameters, dicomPathCacher, downloadCacher);
     dicomPathParser = new DicomPathParser(dicomPathCacher);
     os = parameters.getOs();
   }

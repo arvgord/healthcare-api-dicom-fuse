@@ -26,7 +26,7 @@ import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 
 public class Log4j2LoggerConfigurator {
 
-  public void configureLogger() {
+  public void configureLogger(Level level) {
     ConfigurationBuilder<BuiltConfiguration> builder = ConfigurationBuilderFactory
         .newConfigurationBuilder();
 
@@ -70,7 +70,7 @@ public class Log4j2LoggerConfigurator {
         .add(builder.newAppenderRef("infoRolling").addAttribute("Level", Level.INFO)));
     // create root logger
     builder.add(builder.newRootLogger()
-        .add(builder.newAppenderRef("Stdout").addAttribute("Level", Level.INFO)));
+        .add(builder.newAppenderRef("Stdout").addAttribute("Level", level)));
 
     Configurator.initialize(builder.build());
   }

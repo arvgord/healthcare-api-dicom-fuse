@@ -14,36 +14,141 @@
 
 package com.google.dicomwebfuse.performancetest;
 
+import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.fuse.Parameters;
+import com.google.dicomwebfuse.fuse.cacher.DownloadCacher;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class PerformanceTest {
 
-  public static void startPerformanceTest(Parameters parameters) throws IOException {
+  private static final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+  private final Parameters parameters;
+  private final DownloadCacher downloadCacher;
+
+  public PerformanceTest(Parameters parameters, DownloadCacher downloadCacher) {
+    this.parameters = parameters;
+    this.downloadCacher = downloadCacher;
+  }
+
+  public void startPerformanceTest() throws IOException, DicomFuseException {
     Path inputStore = parameters.getUploadStore();
-    List<Path> inputFiles = Files.walk(inputStore)
+    List<Path> inputDicomFiles = Files.walk(inputStore)
         .filter(Files::isRegularFile)
         .collect(Collectors.toList());
-    Path firstTestFile = inputFiles.get(0);
-    Path instanceTempFile = Files.createTempFile("temp-", ".dcm");
-    long startTime = System.currentTimeMillis();
-    Files.copy(firstTestFile, instanceTempFile, StandardCopyOption.REPLACE_EXISTING);
-    long endTime = System.currentTimeMillis();
-    long fileSize = Files.size(instanceTempFile);
-    long latency = endTime - startTime;
-    System.out.println("Downloading latency " + latency + " ms");
-    System.out.println("Megabytes read per second " + (double) fileSize / (double) latency / 1048.576 + " MB/s");
-    Path instanceTempFile2 = Files.createTempFile("temp-", ".dcm");
-    long startTime1 = System.currentTimeMillis();
-    Files.copy(firstTestFile, instanceTempFile2, StandardCopyOption.REPLACE_EXISTING);
-    long endTime1 = System.currentTimeMillis();
-    long latency1 = endTime1 - startTime1;
-    System.out.println("Downloading latency " + latency1 + " ms");
-    System.out.println("Megabytes read per second " + (double) fileSize / (double) latency1 / 1048.576 + " MB/s");
+    System.out.println("Found " + inputDicomFiles.size() + " files");
+    startSingleFilePerformanceTest(parameters, inputDicomFiles);
+    startMultithreadedPerformanceTest(parameters, inputDicomFiles);
+  }
+
+  private void startSingleFilePerformanceTest(Parameters parameters, List<Path> inputDicomFiles)
+      throws IOException {
+    for (int i = 1; i <= parameters.getIterations(); i++) {
+      System.out.println("\nStart iteration " + i);
+      downloadCacher.clearCache();
+
+//      printHeapMemoryUsage();
+
+      // Start download test
+      Path firstTestFile = inputDicomFiles.get(0);
+      Path tempFile1 = Files.createTempFile("test-", ".dcm");
+      long startTime1 = System.currentTimeMillis();
+      Files.copy(firstTestFile, tempFile1, StandardCopyOption.REPLACE_EXISTING);
+      long endTime1 = System.currentTimeMillis();
+      Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
+          .startTime(startTime1)
+          .endTime(endTime1);
+      System.out.println("Download and read latency " + downloadMetrics.getLatency() + " ms");
+      System.out.println(String.format("Megabytes download and read per second from cache %.2f MB/s", downloadMetrics.getTransmissionRate()));
+
+      // Start copy test
+      Path tempFile2 = Files.createTempFile("temp-", ".dcm");
+      long startTime2 = System.currentTimeMillis();
+      Files.copy(firstTestFile, tempFile2, StandardCopyOption.REPLACE_EXISTING);
+//      printHeapMemoryUsage();
+      long endTime2 = System.currentTimeMillis();
+      Metrics copyFromCacheMetrics = Metrics.forConfiguration(Files.size(tempFile1))
+          .startTime(startTime2)
+          .endTime(endTime2);
+      System.out.println("Copy from cache latency " + copyFromCacheMetrics.getLatency() + " ms");
+      System.out.println(String.format(
+          "Megabytes read per second %.2f MB/s", copyFromCacheMetrics.getTransmissionRate()));
+      Files.delete(tempFile2);
+
+      // Start upload test
+      Path outputStore = parameters.getUploadStore();
+      Path outputFile = outputStore.resolve(tempFile1.getFileName());
+      long startTime3 = System.currentTimeMillis();
+      Files.copy(tempFile1, outputFile, StandardCopyOption.REPLACE_EXISTING);
+      //      printHeapMemoryUsage();
+      long endTime3 = System.currentTimeMillis();
+      Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
+          .startTime(startTime3)
+          .endTime(endTime3);
+      System.out.println("Upload latency " + uploadMetrics.getLatency() + " ms");
+      System.out.println(String.format(
+          "Megabytes upload per second %.2f MB/s", uploadMetrics.getTransmissionRate()));
+//      printHeapMemoryUsage();
+    }
+  }
+
+  private void startMultithreadedPerformanceTest(Parameters parameters, List<Path> inputDicomFiles)
+      throws DicomFuseException {
+    System.out.println("\nStart uploading test with parallel request using " + parameters.getMaxThreads() + " threads");
+    ExecutorService executorService = Executors.newFixedThreadPool(parameters.getMaxThreads());
+    List<Future<Metrics>> futureList = new ArrayList<>();
+    List<Metrics> results = new ArrayList<>();
+    for (int i = 0; i < inputDicomFiles.size(); i++) {
+      Path inputFile = inputDicomFiles.get(i);
+
+      Callable<Metrics> callable = () -> {
+        Path tempFile = Files.createTempFile("test-", ".dcm");
+        Files.copy(inputFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
+        Path outputFile = parameters.getUploadStore().resolve(UUID.randomUUID().toString());
+        long startTime = System.currentTimeMillis();
+        Files.copy(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
+        long endTime = System.currentTimeMillis();
+        Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile))
+            .startTime(startTime)
+            .endTime(endTime);
+        Files.delete(tempFile);
+        return uploadMetrics;
+      };
+      Future<Metrics> future = executorService.submit(callable);
+      futureList.add(future);
+      executorService.submit(callable);
+    }
+    for (Future<Metrics> future : futureList) {
+      try {
+        results.add(future.get());
+      } catch (InterruptedException | ExecutionException e) {
+        throw new DicomFuseException(e);
+      }
+      executorService.shutdown();
+    }
+    double commonTransmissionRate = 0;
+    for (Metrics metrics : results) {
+      System.out.println(String.format("Transmission rate %.2f MB/s", metrics.getTransmissionRate()));
+      commonTransmissionRate += metrics.getTransmissionRate();
+    }
+    System.out.println(String.format("Average transmission rate %.2f MB/s", commonTransmissionRate/results.size()));
+  }
+
+  private void printHeapMemoryUsage() {
+    System.out.println(String.format("Used heap memory: %.2f GB",
+        (double) memoryMXBean.getHeapMemoryUsage().getUsed() / (1024 * 1024 * 1024)));
   }
 }

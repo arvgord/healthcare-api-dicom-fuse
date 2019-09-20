@@ -24,6 +24,7 @@ import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.fuse.AccessChecker;
 import com.google.dicomwebfuse.fuse.DicomFuseFS;
 import com.google.dicomwebfuse.fuse.Parameters;
+import com.google.dicomwebfuse.fuse.cacher.DownloadCacher;
 import com.google.dicomwebfuse.parser.FuseArguments;
 import com.google.dicomwebfuse.parser.FuseTestArguments;
 import com.google.dicomwebfuse.parser.MainArguments;
@@ -64,7 +65,8 @@ class DicomFuseMounter {
     } else {
       parameters = new Parameters(fuseDAO, os, (FuseArguments) arguments);
     }
-    DicomFuseFS dicomFuseFS = new DicomFuseFS(parameters);
+    DownloadCacher downloadCacher = new DownloadCacher(parameters);
+    DicomFuseFS dicomFuseFS = new DicomFuseFS(parameters, downloadCacher);
 
     checkAccess(parameters);
 
@@ -75,12 +77,14 @@ class DicomFuseMounter {
       Runnable runnable = () -> {
         if (dicomFuseFS.isDicomFuseMounted()){
           try {
-            PerformanceTest.startPerformanceTest(parameters);
-          } catch (IOException e) {
-            LOGGER.error("Error!", e);
+            PerformanceTest performanceTest = new PerformanceTest(parameters, downloadCacher);
+            performanceTest.startPerformanceTest();
+          } catch (IOException | DicomFuseException e) {
+            LOGGER.error("Test error!", e);
+          } finally {
+            dicomFuseFS.umount();
+            executor.shutdown();
           }
-          dicomFuseFS.umount();
-          executor.shutdown();
         } else {
           timeout--;
           if (timeout < 0) {

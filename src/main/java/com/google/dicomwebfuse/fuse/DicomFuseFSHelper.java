@@ -53,7 +53,7 @@ import org.apache.logging.log4j.Logger;
 import ru.serce.jnrfuse.FuseFillDir;
 import ru.serce.jnrfuse.struct.FileStat;
 
-class DicomFuseFSHelper {
+public class DicomFuseFSHelper {
 
   private static final Logger LOGGER = LogManager.getLogger();
   private final Parameters parameters;
@@ -65,9 +65,9 @@ class DicomFuseFSHelper {
   private final Instant defaultInstant;
 
 
-  DicomFuseFSHelper(Parameters parameters, DicomPathCacher dicomPathCacher) {
+  public DicomFuseFSHelper(Parameters parameters, DicomPathCacher dicomPathCacher, DownloadCacher downloadCacher) {
     this.parameters = parameters;
-    downloadCacher = new DownloadCacher(parameters);
+    this.downloadCacher = downloadCacher;
     uploadCacher = new UploadCacher();
     cache = new Cache();
     this.dicomPathCacher = dicomPathCacher;

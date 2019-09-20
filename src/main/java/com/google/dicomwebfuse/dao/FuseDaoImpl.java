@@ -213,7 +213,7 @@ public class FuseDaoImpl implements FuseDao {
 
   private void createRequestToDownloadInstance(URIBuilder uriBuilder, Path instanceDataPath)
       throws DicomFuseException {
-    try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+    try (CloseableHttpClient httpclient = httpClientFactory.createHttpClient()) {
       URI uri = uriBuilder.build();
       HttpGet request = new HttpGet(uri);
       request.addHeader(ACCEPT, APPLICATION_DICOM_TRANSFER_SYNTAX);
@@ -237,7 +237,7 @@ public class FuseDaoImpl implements FuseDao {
 
   private void createRequestToUploadInstance(URIBuilder uriBuilder, Path instanceDataPath,
       DicomPath dicomPath) throws DicomFuseException {
-    try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+    try (CloseableHttpClient httpclient = httpClientFactory.createHttpClient()) {
       URI uri = uriBuilder.build();
       HttpPost request = new HttpPost(uri);
 
