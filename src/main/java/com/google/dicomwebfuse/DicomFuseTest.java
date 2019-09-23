@@ -25,7 +25,9 @@ public class DicomFuseTest {
   public static void main(String[] args) {
     FuseTestArguments fuseTestArguments = new FuseTestArguments();
     DicomFuseConfigurator.configureDicomFuse(args, fuseTestArguments, Level.ERROR);
-    Mount<FuseTestArguments> mount = new DicomFuseTestMount();
-    mount.mountDicomFuseFS(fuseTestArguments);
+    if (!fuseTestArguments.help) {
+      Mount<FuseTestArguments> mount = new DicomFuseTestMount();
+      mount.mountDicomFuseFS(fuseTestArguments);
+    }
   }
 }

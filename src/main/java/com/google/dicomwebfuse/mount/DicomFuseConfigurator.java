@@ -36,7 +36,6 @@ public class DicomFuseConfigurator {
 
     if (arguments.help) {
       jCommander.usage();
-      System.exit(0);
     }
   }
 }
