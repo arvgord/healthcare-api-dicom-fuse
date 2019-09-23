@@ -15,12 +15,17 @@
 package com.google.dicomwebfuse;
 
 import com.google.dicomwebfuse.mount.DicomFuseConfigurator;
+import com.google.dicomwebfuse.mount.DicomFuseTestMount;
+import com.google.dicomwebfuse.mount.Mount;
 import com.google.dicomwebfuse.parser.FuseTestArguments;
+import org.apache.logging.log4j.Level;
 
-public class DicomFusePerformanceTest {
+public class DicomFuseTest {
 
   public static void main(String[] args) {
     FuseTestArguments fuseTestArguments = new FuseTestArguments();
-    DicomFuseConfigurator.configureAndMountDicomFuse(args, fuseTestArguments);
+    DicomFuseConfigurator.configureDicomFuse(args, fuseTestArguments, Level.ERROR);
+    Mount<FuseTestArguments> mount = new DicomFuseTestMount();
+    mount.mountDicomFuseFS(fuseTestArguments);
   }
 }

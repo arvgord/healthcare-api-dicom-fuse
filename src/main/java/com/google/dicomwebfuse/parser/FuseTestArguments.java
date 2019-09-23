@@ -50,7 +50,7 @@ public class FuseTestArguments extends MainArguments {
   @Parameter(
       names = {"--iterationCount"},
       descriptionKey = "option.fuseTest.iterationCount",
-      order = 7,
+      order = 8,
       converter = IntegerConverter.class
   )
   public int iterations = 3;

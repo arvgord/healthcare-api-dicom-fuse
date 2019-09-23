@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.dicomwebfuse;
+package com.google.dicomwebfuse.mount;
 
-import com.google.dicomwebfuse.mount.DicomFuseConfigurator;
-import com.google.dicomwebfuse.mount.DicomFuseMount;
-import com.google.dicomwebfuse.mount.Mount;
+import com.google.dicomwebfuse.dao.FuseDao;
+import com.google.dicomwebfuse.fuse.DicomFuseFS;
+import com.google.dicomwebfuse.fuse.Parameters;
+import com.google.dicomwebfuse.fuse.cacher.DownloadCacher;
 import com.google.dicomwebfuse.parser.FuseArguments;
-import org.apache.logging.log4j.Level;
+import jnr.ffi.Platform.OS;
 
-public class DicomFuse {
+public class DicomFuseMount extends Mount<FuseArguments> {
 
-  public static void main(String[] args) {
-    FuseArguments fuseArguments = new FuseArguments();
-    DicomFuseConfigurator.configureDicomFuse(args, fuseArguments, Level.INFO);
-    Mount<FuseArguments> mount = new DicomFuseMount();
-    mount.mountDicomFuseFS(fuseArguments);
+  @Override
+  Parameters setParameters(FuseArguments arguments, FuseDao fuseDao, OS os) {
+    return new Parameters(fuseDao, os, arguments);
   }
+
+  @Override
+  void startTestIfPresent(DicomFuseFS dicomFuseFS, Parameters parameters,
+      DownloadCacher downloadCacher) {}
 }

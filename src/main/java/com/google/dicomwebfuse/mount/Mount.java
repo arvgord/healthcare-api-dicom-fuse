@@ -14,87 +14,52 @@
 
 package com.google.dicomwebfuse.mount;
 
+import com.google.api.client.http.HttpStatusCodes;
 import com.google.dicomwebfuse.auth.AuthAdc;
 import com.google.dicomwebfuse.dao.FuseDao;
 import com.google.dicomwebfuse.dao.FuseDaoImpl;
 import com.google.dicomwebfuse.dao.http.HttpClientFactory;
 import com.google.dicomwebfuse.dao.http.HttpClientFactoryImpl;
-import com.google.dicomwebfuse.entities.cache.CacheTime;
 import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.fuse.AccessChecker;
 import com.google.dicomwebfuse.fuse.DicomFuseFS;
 import com.google.dicomwebfuse.fuse.Parameters;
 import com.google.dicomwebfuse.fuse.cacher.DownloadCacher;
-import com.google.dicomwebfuse.parser.FuseArguments;
-import com.google.dicomwebfuse.parser.FuseTestArguments;
 import com.google.dicomwebfuse.parser.MainArguments;
-import com.google.dicomwebfuse.performancetest.PerformanceTest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import jnr.ffi.Platform;
 import jnr.ffi.Platform.OS;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-class DicomFuseMounter {
+public abstract class Mount<T extends MainArguments> {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final int INITIAL_DELAY = 2; // sec
-  private static final int DELAY = 1; // sec
-  private static int timeout = 10;
 
-  <T extends MainArguments> void mountDicomFuse(T arguments) {
+  abstract Parameters setParameters(T arguments, FuseDao fuseDao, OS os);
+  abstract void startTestIfPresent(DicomFuseFS dicomFuseFS, Parameters parameters, DownloadCacher downloadCacher);
+
+  public void mountDicomFuseFS(T arguments) {
     AuthAdc authAdc = createAuth(arguments.keyPath);
     HttpClientFactory httpClientFactory = new HttpClientFactoryImpl();
     FuseDao fuseDAO = new FuseDaoImpl(authAdc, httpClientFactory);
     OS os = Platform.getNativePlatform().getOS();
 
-    Parameters parameters;
-    if (arguments instanceof FuseTestArguments) {
-      // Set maximum cacheTime for performance tests
-      CacheTime cacheTime = new CacheTime(Integer.MAX_VALUE, Integer.MAX_VALUE);
-      // Set maximum cacheSize for performance tests
-      long cacheSize = Integer.MAX_VALUE;
-      parameters = new Parameters(fuseDAO, os, (FuseTestArguments) arguments, cacheTime, cacheSize);
-    } else {
-      parameters = new Parameters(fuseDAO, os, (FuseArguments) arguments);
-    }
+    Parameters parameters = setParameters(arguments, fuseDAO, os);
+
     DownloadCacher downloadCacher = new DownloadCacher(parameters);
     DicomFuseFS dicomFuseFS = new DicomFuseFS(parameters, downloadCacher);
 
     checkAccess(parameters);
 
+    startTestIfPresent(dicomFuseFS, parameters, downloadCacher);
+
     String[] fuseMountOptions = setFuseMountOptions(os);
 
-    if (arguments instanceof FuseTestArguments) {
-      ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-      Runnable runnable = () -> {
-        if (dicomFuseFS.isDicomFuseMounted()){
-          try {
-            PerformanceTest performanceTest = new PerformanceTest(parameters, downloadCacher);
-            performanceTest.startPerformanceTest();
-          } catch (IOException | DicomFuseException e) {
-            LOGGER.error("Test error!", e);
-          } finally {
-            dicomFuseFS.umount();
-            executor.shutdown();
-          }
-        } else {
-          timeout--;
-          if (timeout < 0) {
-            executor.shutdown();
-            LOGGER.error("Performance test error! DICOMFuse not mounted!");
-          }
-        }
-      };
-      executor.scheduleWithFixedDelay(runnable, INITIAL_DELAY, DELAY, TimeUnit.SECONDS);
-    }
     try {
       dicomFuseFS.mount(arguments.mountPath, true, false, fuseMountOptions);
     } finally {
@@ -107,7 +72,7 @@ class DicomFuseMounter {
     try {
       accessChecker.check();
     } catch (DicomFuseException e) {
-      if (e.getStatusCode() == 403) {
+      if (e.getStatusCode() == HttpStatusCodes.STATUS_CODE_FORBIDDEN) {
         LOGGER.error("Please check your Project name, Location, Dataset name in "
             + "--datasetAddr argument. Check that Project and Dataset exist. Also, check the role "
             + "for current account service key. The role should be Healthcare DICOM Editor.", e);
