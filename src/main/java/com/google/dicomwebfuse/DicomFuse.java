@@ -18,13 +18,12 @@ import com.google.dicomwebfuse.mount.DicomFuseConfigurator;
 import com.google.dicomwebfuse.mount.DicomFuseMount;
 import com.google.dicomwebfuse.mount.Mount;
 import com.google.dicomwebfuse.parser.FuseArguments;
-import org.apache.logging.log4j.Level;
 
 public class DicomFuse {
 
   public static void main(String[] args) {
     FuseArguments fuseArguments = new FuseArguments();
-    DicomFuseConfigurator.configureDicomFuse(args, fuseArguments, Level.INFO);
+    DicomFuseConfigurator.configureDicomFuse(args, fuseArguments);
     if (!fuseArguments.help) {
       Mount<FuseArguments> mount = new DicomFuseMount();
       mount.mountDicomFuseFS(fuseArguments);

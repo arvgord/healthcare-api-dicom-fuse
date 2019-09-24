@@ -15,17 +15,12 @@
 package com.google.dicomwebfuse.mount;
 
 import com.beust.jcommander.JCommander;
-import com.google.dicomwebfuse.log4j2.Log4j2LoggerConfigurator;
 import com.google.dicomwebfuse.parser.MainArguments;
 import java.util.ResourceBundle;
-import org.apache.logging.log4j.Level;
 
 public class DicomFuseConfigurator {
 
-  public static <T extends MainArguments> void configureDicomFuse(String[] args, T arguments, Level level) {
-
-    Log4j2LoggerConfigurator log4j2LoggerConfigurator = new Log4j2LoggerConfigurator();
-    log4j2LoggerConfigurator.configureLogger(level);
+  public static <T extends MainArguments> void configureDicomFuse(String[] args, T arguments) {
 
     JCommander jCommander = JCommander.newBuilder()
         .addObject(arguments)
