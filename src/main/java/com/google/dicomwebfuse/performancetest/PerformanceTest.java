@@ -47,10 +47,13 @@ public class PerformanceTest {
   public void startPerformanceTest() throws IOException, DicomFuseException {
     System.out.println("Test started");
     System.out.println("Searching for files in the input folder ...");
-    Path inputStore = parameters.getUploadStore();
+    Path inputStore = parameters.getDownloadStore();
     List<Path> inputDicomFiles = Files.walk(inputStore)
         .filter(Files::isRegularFile)
         .collect(Collectors.toList());
+    if (inputDicomFiles.size() == 0) {
+      throw new DicomFuseException("Error! Download store is empty!");
+    }
     System.out.printf("Found %d files %n", inputDicomFiles.size());
     startSingleFilePerformanceTest(parameters, inputDicomFiles);
     startMultithreadedPerformanceTest(parameters, inputDicomFiles);
