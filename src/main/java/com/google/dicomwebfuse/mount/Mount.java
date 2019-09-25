@@ -33,17 +33,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import jnr.ffi.Platform;
 import jnr.ffi.Platform.OS;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public abstract class Mount<T extends MainArguments> {
-
-  private static final Logger LOGGER = LogManager.getLogger();
 
   abstract Parameters setParameters(T arguments, FuseDao fuseDao, OS os);
   abstract void startTestIfPresent(DicomFuseFS dicomFuseFS, Parameters parameters, DownloadCacher downloadCacher);
 
-  public void mountDicomFuseFS(T arguments) {
+  public void mountDicomFuseFS(T arguments) throws DicomFuseException {
     AuthAdc authAdc = createAuth(arguments.keyPath);
     HttpClientFactory httpClientFactory = new HttpClientFactoryImpl();
     FuseDao fuseDAO = new FuseDaoImpl(authAdc, httpClientFactory);
@@ -67,33 +63,30 @@ public abstract class Mount<T extends MainArguments> {
     }
   }
 
-  private void checkAccess(Parameters parameters) {
+  private void checkAccess(Parameters parameters) throws DicomFuseException {
     AccessChecker accessChecker = new AccessChecker(parameters);
     try {
       accessChecker.check();
     } catch (DicomFuseException e) {
       if (e.getStatusCode() == HttpStatusCodes.STATUS_CODE_FORBIDDEN) {
-        LOGGER.error("Please check your Project name, Location, Dataset name in "
+        throw new DicomFuseException("Please check your Project name, Location, Dataset name in "
             + "--datasetAddr argument. Check that Project and Dataset exist. Also, check the role "
             + "for current account service key. The role should be Healthcare DICOM Editor.", e);
       } else {
-        LOGGER.error("AccessChecker error!", e);
+        throw new DicomFuseException("AccessChecker error!", e);
       }
-      System.exit(0);
     }
   }
 
-  private AuthAdc createAuth(Path keyPath) {
+  private AuthAdc createAuth(Path keyPath) throws DicomFuseException {
     try {
       return new AuthAdc(keyPath);
     } catch (IOException e) {
-      LOGGER.error("AuthAdc error!", e);
-      System.exit(0);
-      return null;
+      throw new DicomFuseException("AuthAdc error!", e);
     }
   }
 
-  private String[] setFuseMountOptions(OS os) {
+  private String[] setFuseMountOptions(OS os) throws DicomFuseException {
     ArrayList<String> mountOptions = new ArrayList<>();
     if (os == OS.DARWIN || os == OS.LINUX) {
       Path userHome = Paths.get(System.getProperty("user.home"));
@@ -101,8 +94,7 @@ public abstract class Mount<T extends MainArguments> {
         mountOptions.add("-ouid=" + Files.getAttribute(userHome, "unix:uid"));
         mountOptions.add("-ogid=" + Files.getAttribute(userHome, "unix:gid"));
       } catch (IOException e) {
-        LOGGER.error("Error!", e);
-        System.exit(0);
+        throw new DicomFuseException("Set DICOMFuse options error!", e);
       }
     }
 

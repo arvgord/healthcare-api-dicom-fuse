@@ -48,7 +48,7 @@ public class DicomFuseTestMount extends Mount<FuseTestArguments> {
       DownloadCacher downloadCacher) {
     Instant instant = Instant.now().plusSeconds(TIMEOUT);
     Runnable testRunnable = () -> {
-      while (true) { // TODO: Check this point
+      while (instant.isAfter(Instant.now().minusSeconds(1))) {
         if (dicomFuseFS.isDicomFuseMounted()) {
           try {
             TimeUnit.SECONDS.sleep(DELAY);

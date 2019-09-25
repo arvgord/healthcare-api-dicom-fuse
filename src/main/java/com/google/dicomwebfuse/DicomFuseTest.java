@@ -14,6 +14,7 @@
 
 package com.google.dicomwebfuse;
 
+import com.google.dicomwebfuse.exception.DicomFuseException;
 import com.google.dicomwebfuse.mount.DicomFuseConfigurator;
 import com.google.dicomwebfuse.mount.DicomFuseTestMount;
 import com.google.dicomwebfuse.mount.Mount;
@@ -35,7 +36,11 @@ public class DicomFuseTest {
     DicomFuseConfigurator.configureDicomFuse(args, fuseTestArguments);
     if (!fuseTestArguments.help) {
       Mount<FuseTestArguments> mount = new DicomFuseTestMount();
-      mount.mountDicomFuseFS(fuseTestArguments);
+      try {
+        mount.mountDicomFuseFS(fuseTestArguments);
+      } catch (DicomFuseException e) {
+        LOGGER.error("DICOMFuse test error!", e);
+      }
     }
   }
 

@@ -26,6 +26,10 @@ public class DicomFuseException extends Exception {
     super(e);
   }
 
+  public DicomFuseException(String message, Exception e) {
+    super(message, e);
+  }
+
   public DicomFuseException(String message, int statusCode) {
     super(message);
     this.statusCode = statusCode;
