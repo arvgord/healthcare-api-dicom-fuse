@@ -115,7 +115,7 @@ public abstract class Mount<T extends MainArguments> {
     if (os == OS.LINUX) {
       // set libfuse mount options
       // set filesystem name
-      mountOptions.add("-ofsname=DicomFuse");
+      mountOptions.add("-ofsname=DICOMFuse");
       //set the timeout in seconds for which a negative lookup will be cached
       mountOptions.add("-onegative_timeout=4");
       // because DICOMFuse has the internal cache, is disabled the external cache
@@ -127,7 +127,7 @@ public abstract class Mount<T extends MainArguments> {
     if (os == OS.WINDOWS) {
       // set WinFps mount options
       // set filesystem name
-      mountOptions.add("-ofsname=DicomFuse");
+      mountOptions.add("-ofsname=DICOMFuse");
       //set the timeout in seconds for which a negative lookup will be cached
       mountOptions.add("-onegative_timeout=4");
       // because DICOMFuse has the internal cache, is disabled the external cache

@@ -38,7 +38,7 @@ public class DicomFuseTestMount extends Mount<FuseTestArguments> {
   @Override
   Parameters setParameters(FuseTestArguments arguments, FuseDao fuseDao, OS os) {
     // Set maximum cacheTime and cacheSize for tests
-    CacheTime cacheTime = new CacheTime(Integer.MAX_VALUE, Integer.MAX_VALUE);
+    CacheTime cacheTime = new CacheTime(60, Integer.MAX_VALUE);
     long cacheSize = Integer.MAX_VALUE;
     return new Parameters(fuseDao, os, arguments, cacheTime, cacheSize);
   }
