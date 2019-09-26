@@ -65,6 +65,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -83,6 +84,7 @@ public class FuseDaoImpl implements FuseDao {
   private AuthAdc authAdc;
   private ObjectMapper objectMapper;
   private HttpClientFactory httpClientFactory;
+//  private AtomicInteger atomicInteger = new AtomicInteger();
 
   public FuseDaoImpl(AuthAdc authAdc, HttpClientFactory httpClientFactory) {
     this.authAdc = authAdc;
@@ -191,6 +193,7 @@ public class FuseDaoImpl implements FuseDao {
 
   private <T> T createRequestForObjectList(URIBuilder uriBuilder, TypeReference<T> typeReference)
       throws DicomFuseException {
+//    System.out.println(atomicInteger.addAndGet(1));
     T result;
     try (CloseableHttpClient httpclient = httpClientFactory.createHttpClient()) {
       URI uri = uriBuilder.build();

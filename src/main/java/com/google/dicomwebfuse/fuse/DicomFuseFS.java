@@ -80,7 +80,6 @@ public class DicomFuseFS extends FuseStubFS {
     filler.apply(buf, "..", null, 0); // add default folder
     try {
       DicomPath dicomPath = dicomPathParser.parsePath(path);
-      dicomFuseFSHelper.checkExistingObject(dicomPath);
       dicomFuseFSHelper.fillFolder(dicomPath, buf, filler);
     } catch (DicomFuseException e) {
       LOGGER.error("readdir error!", e);

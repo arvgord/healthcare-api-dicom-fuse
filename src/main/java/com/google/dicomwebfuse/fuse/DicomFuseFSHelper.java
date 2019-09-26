@@ -53,7 +53,7 @@ import org.apache.logging.log4j.Logger;
 import ru.serce.jnrfuse.FuseFillDir;
 import ru.serce.jnrfuse.struct.FileStat;
 
-public class DicomFuseFSHelper {
+class DicomFuseFSHelper {
 
   private static final Logger LOGGER = LogManager.getLogger();
   private final Parameters parameters;
@@ -65,7 +65,8 @@ public class DicomFuseFSHelper {
   private final Instant defaultInstant;
 
 
-  public DicomFuseFSHelper(Parameters parameters, DicomPathCacher dicomPathCacher, DownloadCacher downloadCacher) {
+  DicomFuseFSHelper(Parameters parameters, DicomPathCacher dicomPathCacher,
+      DownloadCacher downloadCacher) {
     this.parameters = parameters;
     this.downloadCacher = downloadCacher;
     uploadCacher = new UploadCacher();
@@ -78,40 +79,25 @@ public class DicomFuseFSHelper {
   void checkExistingObject(DicomPath dicomPath) throws DicomFuseException {
     switch (dicomPath.getDicomPathLevel()) {
       case DATASET:
-        if (cache.isDatasetOutdated()) {
-          updateDicomStoresInDataset();
-        }
         break;
       case DICOM_STORE:
-        if (cache.isDatasetOutdated() || cache.isDicomStoreNotExist(dicomPath)) {
-          updateDicomStoresInDataset();
-          if (cache.isDicomStoreNotExist(dicomPath)) {
-            throw new DicomFuseException("Invalid path to the dicom store! " + dicomPath);
-          }
+        if (cache.isDicomStoreNotExist(dicomPath)) {
+          throw new DicomFuseException("Invalid path to the dicom store! " + dicomPath);
         }
         break;
       case STUDY:
-        if (cache.isDicomStoreOutdated(dicomPath) || cache.isStudyNotExist(dicomPath)) {
-          updateStudiesInDicomStore(dicomPath, false);
-          if (cache.isStudyNotExist(dicomPath)) {
-            throw new DicomFuseException("Invalid path to the study! " + dicomPath);
-          }
+        if (cache.isStudyNotExist(dicomPath)) {
+          throw new DicomFuseException("Invalid path to the study! " + dicomPath);
         }
         break;
       case SERIES:
-        if (cache.isStudyOutdated(dicomPath) || cache.isSeriesNotExist(dicomPath)) {
-          updateSeriesInStudy(dicomPath);
-          if (cache.isSeriesNotExist(dicomPath)) {
-            throw new DicomFuseException("Invalid path to the series! " + dicomPath);
-          }
+        if (cache.isSeriesNotExist(dicomPath)) {
+          throw new DicomFuseException("Invalid path to the series! " + dicomPath);
         }
         break;
       case INSTANCE:
-        if (cache.isSeriesOutdated(dicomPath) || cache.isInstanceNotExist(dicomPath)) {
-          updateInstancesInSeries(dicomPath);
-          if (cache.isInstanceNotExist(dicomPath)) {
-            throw new DicomFuseException("Invalid path to the instance! " + dicomPath);
-          }
+        if (cache.isInstanceNotExist(dicomPath)) {
+          throw new DicomFuseException("Invalid path to the instance! " + dicomPath);
         }
         break;
       case TEMP_FILE_IN_DICOM_STORE:
@@ -205,7 +191,8 @@ public class DicomFuseFSHelper {
     }
   }
 
-  private void setStat(DicomFuseFS dicomFuseFS, FileStat fileStat, int perm) throws DicomFuseException {
+  private void setStat(DicomFuseFS dicomFuseFS, FileStat fileStat, int perm)
+      throws DicomFuseException {
     setStat(dicomFuseFS, fileStat, perm, null);
   }
 
