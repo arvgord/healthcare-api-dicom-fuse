@@ -17,6 +17,8 @@ package com.google.dicomwebfuse.performancetest;
 public class Metrics {
 
   private static final int BYTES_IN_MEBIBYTE = 1024 * 1024;
+  private static final int BYTES_IN_GIBIBYTE = 1024 * 1024 * 1024;
+  private static final int SECONDS_IN_HOUR = 60 * 60;
   private static final int MILLISECONDS_IN_SECONDS = 1000;
   private long fileSize; // in bytes
   private long startTime; // ms
@@ -38,24 +40,28 @@ public class Metrics {
     return this;
   }
 
-  long getFileSizeInBytes() {
-    return fileSize;
-  }
-
-  double getTransmissionRate() {
-    return getFileSizeInMebibyte() / getLatencyInSeconds();
-  }
-
   long getLatency() {
     return endTime - startTime;
   }
 
-  private double getLatencyInSeconds() {
-    return (double) getLatency() / MILLISECONDS_IN_SECONDS;
+  double getTransmissionRateInMibPerSec() {
+    return getFileSizeInMebibyte() / getLatencyInSeconds();
   }
 
-  private double getFileSizeInMebibyte() {
-    return (double) fileSize / BYTES_IN_MEBIBYTE;
+  double getTransmissionRateInGibPerHour() {
+    return getFileSizeInGibibyte() / (getLatencyInSeconds() / SECONDS_IN_HOUR);
+  }
+
+  private double getLatencyInSeconds() {
+    return (double) getLatency() / (double) MILLISECONDS_IN_SECONDS;
+  }
+
+  double getFileSizeInMebibyte() {
+    return (double) fileSize / (double) BYTES_IN_MEBIBYTE;
+  }
+
+  double getFileSizeInGibibyte() {
+    return (double) fileSize / (double) BYTES_IN_GIBIBYTE;
   }
 
   @Override

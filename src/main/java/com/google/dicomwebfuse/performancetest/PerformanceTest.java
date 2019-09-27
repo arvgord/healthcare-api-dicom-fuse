@@ -78,9 +78,11 @@ public class PerformanceTest {
           .startTime(startTime1)
           .endTime(endTime1);
       System.out
+          .printf("%-50s%-8.2f%s%n", "File size is", downloadMetrics.getFileSizeInMebibyte(), "MiB");
+      System.out
           .printf("%-50s%-8d%s%n", "Download and read latency", downloadMetrics.getLatency(), "ms");
       System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
-          downloadMetrics.getTransmissionRate(), "MB/s");
+          downloadMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
 
       // Start copy single file from local cache test
       Path tempFile2 = Files.createTempFile("temp-", ".dcm");
@@ -93,7 +95,7 @@ public class PerformanceTest {
       System.out.printf("%-50s%-8d%s%n", "Copy latency from local cache",
           copyFromCacheMetrics.getLatency(), "ms");
       System.out.printf("%-50s%-8.2f%s%n", "Read rate per second from local cache",
-          copyFromCacheMetrics.getTransmissionRate(), "MB/s");
+          copyFromCacheMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
       Files.delete(tempFile2);
 
       // Start upload single file test
@@ -106,8 +108,8 @@ public class PerformanceTest {
           .startTime(startTime3)
           .endTime(endTime3);
       System.out.printf("%-50s%-8d%s%n", "Upload latency", uploadMetrics.getLatency(), "ms");
-      System.out.printf("%-50s%-8.2f%s%n", "Upload rate per second",
-          uploadMetrics.getTransmissionRate(), "MB/s");
+      System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
+          uploadMetrics.getTransmissionRateInMibPerSec(), "MiB/s", uploadMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
 
       printHeapMemoryUsage();
     }
@@ -118,7 +120,8 @@ public class PerformanceTest {
     // Start multithreaded upload test
     System.out.println();
     System.out.println();
-    System.out.printf("Started upload test for %d files, using %d threads", inputDicomFiles.size(),
+    int filesCount = inputDicomFiles.size();
+    System.out.printf("Started upload test for %d files, using %d threads", filesCount,
         parameters.getMaxThreads());
     System.out.println();
     ExecutorService executorService = Executors.newFixedThreadPool(parameters.getMaxThreads());
@@ -152,20 +155,26 @@ public class PerformanceTest {
           throw new DicomFuseException(e);
         }
       }
-      double commonTransmissionRate = 0;
+      double commonTransmissionRateInMibPerSec = 0;
+      double commonTransmissionRateInGibPerHour = 0;
+      double fileSizesInMib = 0;
       for (Metrics metrics : results) {
-        System.out.printf("%-50s%-8.2f%s%n", "Transmission rate for single file",
-            metrics.getTransmissionRate(), "MB/s");
-        commonTransmissionRate += metrics.getTransmissionRate();
+        commonTransmissionRateInMibPerSec += metrics.getTransmissionRateInMibPerSec();
+        commonTransmissionRateInGibPerHour += metrics.getTransmissionRateInGibPerHour();
+        fileSizesInMib += metrics.getFileSizeInMebibyte();
       }
-      System.out.printf("%-50s%-8.2f%s%n", "Average transmission rate",
-          commonTransmissionRate / results.size(), "MB/s");
+      double averageTransmissionRateMibPerSec = commonTransmissionRateInMibPerSec / filesCount;
+      double averageTransmissionRateGibPerHour = commonTransmissionRateInGibPerHour / filesCount;
+      System.out.printf("%-50s%-8.2f%s%n", "Total mebibytes uploaded",
+          fileSizesInMib, "MiB");
+      System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
+          averageTransmissionRateMibPerSec, "MiB/s", averageTransmissionRateGibPerHour, "GiB/h");
     }
     executorService.shutdown();
   }
 
   private void printHeapMemoryUsage() {
     System.out.printf("%-50s%-8.2f%s%n", "Used heap memory",
-        (double) memoryMXBean.getHeapMemoryUsage().getUsed() / BYTES_IN_GIBIBYTE, "GB");
+        (double) memoryMXBean.getHeapMemoryUsage().getUsed() / BYTES_IN_GIBIBYTE, "GiB");
   }
 }
