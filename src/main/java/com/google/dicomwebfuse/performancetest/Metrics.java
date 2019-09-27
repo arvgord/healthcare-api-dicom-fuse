@@ -56,11 +56,15 @@ public class Metrics {
     return (double) getLatency() / (double) MILLISECONDS_IN_SECONDS;
   }
 
+  double getFileSizeInBytes() {
+    return fileSize;
+  }
+
   double getFileSizeInMebibyte() {
     return (double) fileSize / (double) BYTES_IN_MEBIBYTE;
   }
 
-  double getFileSizeInGibibyte() {
+  private double getFileSizeInGibibyte() {
     return (double) fileSize / (double) BYTES_IN_GIBIBYTE;
   }
 

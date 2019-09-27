@@ -78,7 +78,8 @@ public class PerformanceTest {
           .startTime(startTime1)
           .endTime(endTime1);
       System.out
-          .printf("%-50s%-8.2f%s%n", "File size is", downloadMetrics.getFileSizeInMebibyte(), "MiB");
+          .printf("%-50s%-8.2f%s%n", "File size is", downloadMetrics.getFileSizeInMebibyte(),
+              "MiB");
       System.out
           .printf("%-50s%-8d%s%n", "Download and read latency", downloadMetrics.getLatency(), "ms");
       System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
@@ -109,7 +110,8 @@ public class PerformanceTest {
           .endTime(endTime3);
       System.out.printf("%-50s%-8d%s%n", "Upload latency", uploadMetrics.getLatency(), "ms");
       System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
-          uploadMetrics.getTransmissionRateInMibPerSec(), "MiB/s", uploadMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
+          uploadMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
+          uploadMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
 
       printHeapMemoryUsage();
     }
@@ -131,6 +133,7 @@ public class PerformanceTest {
       downloadCacher.clearCache();
       List<Future<Metrics>> futureList = new ArrayList<>();
       List<Metrics> results = new ArrayList<>();
+      long commonStartTime = System.currentTimeMillis();
       for (Path inputFile : inputDicomFiles) {
         Callable<Metrics> callable = () -> {
           Path tempFile = Files.createTempFile("test-", ".dcm");
@@ -155,20 +158,19 @@ public class PerformanceTest {
           throw new DicomFuseException(e);
         }
       }
-      double commonTransmissionRateInMibPerSec = 0;
-      double commonTransmissionRateInGibPerHour = 0;
-      double fileSizesInMib = 0;
+      long commonEndTime = System.currentTimeMillis();
+      long fileSizesInBytes = 0;
       for (Metrics metrics : results) {
-        commonTransmissionRateInMibPerSec += metrics.getTransmissionRateInMibPerSec();
-        commonTransmissionRateInGibPerHour += metrics.getTransmissionRateInGibPerHour();
-        fileSizesInMib += metrics.getFileSizeInMebibyte();
+        fileSizesInBytes += metrics.getFileSizeInBytes();
       }
-      double averageTransmissionRateMibPerSec = commonTransmissionRateInMibPerSec / filesCount;
-      double averageTransmissionRateGibPerHour = commonTransmissionRateInGibPerHour / filesCount;
+      Metrics commonMetrics = Metrics.forConfiguration(fileSizesInBytes)
+          .startTime(commonStartTime)
+          .endTime(commonEndTime);
       System.out.printf("%-50s%-8.2f%s%n", "Total mebibytes uploaded",
-          fileSizesInMib, "MiB");
+          commonMetrics.getFileSizeInMebibyte(), "MiB");
       System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
-          averageTransmissionRateMibPerSec, "MiB/s", averageTransmissionRateGibPerHour, "GiB/h");
+          commonMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
+          commonMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
     }
     executorService.shutdown();
   }
