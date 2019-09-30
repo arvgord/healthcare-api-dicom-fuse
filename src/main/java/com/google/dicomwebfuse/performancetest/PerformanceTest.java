@@ -78,13 +78,13 @@ public class PerformanceTest {
       long startTime1 = System.currentTimeMillis();
       Files.copy(firstTestFile, tempFile1, StandardCopyOption.REPLACE_EXISTING);
       long endTime1 = System.currentTimeMillis();
+      Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
+          .startTime(startTime1)
+          .endTime(endTime1);
+      System.out.printf("%-50s%-8.2f%s%n", "File size is",
+          downloadMetrics.getFileSizeInMebibyte(), "MiB");
       // Skip some test for Windows
       if (parameters.getOs() != OS.WINDOWS) {
-        Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
-            .startTime(startTime1)
-            .endTime(endTime1);
-        System.out.printf("%-50s%-8.2f%s%n", "File size is",
-            downloadMetrics.getFileSizeInMebibyte(), "MiB");
         System.out.printf("%-50s%-8d%s%n", "Download and read time",
             downloadMetrics.getElapsedTimeInMilliseconds(), "ms");
         System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
@@ -114,7 +114,7 @@ public class PerformanceTest {
       Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
           .startTime(startTime3)
           .endTime(endTime3);
-      System.out.printf("%-50s%-8d%s%n", "Upload time",
+      System.out.printf("%-50s%-8d%s%n", "Write and upload time",
           uploadMetrics.getElapsedTimeInMilliseconds(), "ms");
       System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
           uploadMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
@@ -179,7 +179,7 @@ public class PerformanceTest {
             .endTime(commonEndTime);
         System.out.printf("%-50s%-8.2f%s%n", "Total mebibytes uploaded",
             commonMetrics.getFileSizeInMebibyte(), "MiB");
-        System.out.printf("%-50s%-8d%s%n", "Upload time",
+        System.out.printf("%-50s%-8d%s%n", "Write and upload time",
             commonMetrics.getElapsedTimeInMilliseconds(), "ms");
         System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
             commonMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
