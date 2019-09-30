@@ -136,17 +136,30 @@ public class PerformanceTest {
     System.out.println();
 
     List<Path> tempFiles = new ArrayList<>();
+    List<Future<Void>> copyFutureList = new ArrayList<>();
     for (Path inputDicomFile : inputDicomFiles) {
-      Path tempFile = Files.createTempFile("test-", ".dcm");
-      tempFile.toFile().deleteOnExit();
-      Files.copy(inputDicomFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
-      tempFiles.add(tempFile);
+      Callable<Void> callable = () -> {
+        Path tempFile = Files.createTempFile("test-", ".dcm");
+        tempFile.toFile().deleteOnExit();
+        Files.copy(inputDicomFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
+        tempFiles.add(tempFile);
+        return null;
+      };
+      Future<Void> future = executorService.submit(callable);
+      copyFutureList.add(future);
+    }
+    for (Future<Void> future : copyFutureList) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new DicomFuseException(e);
+      }
     }
     try {
       for (int i = 1; i <= parameters.getIterations(); i++) {
         System.out.println();
         System.out.printf("Start iteration %d%n", i);
-        List<Future<Metrics>> futureList = new ArrayList<>();
+        List<Future<Metrics>> metricsFutureList = new ArrayList<>();
         List<Metrics> results = new ArrayList<>();
         long commonStartTime = System.currentTimeMillis();
         for (Path tempFile : tempFiles) {
@@ -160,9 +173,9 @@ public class PerformanceTest {
                 .endTime(endTime);
           };
           Future<Metrics> future = executorService.submit(callable);
-          futureList.add(future);
+          metricsFutureList.add(future);
         }
-        for (Future<Metrics> future : futureList) {
+        for (Future<Metrics> future : metricsFutureList) {
           try {
             results.add(future.get());
           } catch (InterruptedException | ExecutionException e) {
