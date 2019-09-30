@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import jnr.ffi.Platform.OS;
 
 public class PerformanceTest {
 
@@ -77,29 +78,32 @@ public class PerformanceTest {
       long startTime1 = System.currentTimeMillis();
       Files.copy(firstTestFile, tempFile1, StandardCopyOption.REPLACE_EXISTING);
       long endTime1 = System.currentTimeMillis();
-      Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
-          .startTime(startTime1)
-          .endTime(endTime1);
-      System.out.printf("%-50s%-8.2f%s%n", "File size is",
-          downloadMetrics.getFileSizeInMebibyte(), "MiB");
-      System.out.printf("%-50s%-8d%s%n", "Download and read time",
-              downloadMetrics.getElapsedTimeInMilliseconds(), "ms");
-      System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
-          downloadMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
+      // Skip some test for Windows
+      if (parameters.getOs() != OS.WINDOWS) {
+        Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
+            .startTime(startTime1)
+            .endTime(endTime1);
+        System.out.printf("%-50s%-8.2f%s%n", "File size is",
+            downloadMetrics.getFileSizeInMebibyte(), "MiB");
+        System.out.printf("%-50s%-8d%s%n", "Download and read time",
+            downloadMetrics.getElapsedTimeInMilliseconds(), "ms");
+        System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
+            downloadMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
 
-      // Start copying a single test file from local cache
-      Path tempFile2 = Files.createTempFile("temp-", ".dcm");
-      long startTime2 = System.currentTimeMillis();
-      Files.copy(firstTestFile, tempFile2, StandardCopyOption.REPLACE_EXISTING);
-      long endTime2 = System.currentTimeMillis();
-      Metrics copyFromCacheMetrics = Metrics.forConfiguration(Files.size(tempFile2))
-          .startTime(startTime2)
-          .endTime(endTime2);
-      System.out.printf("%-50s%-8d%s%n", "Copy time from local cache",
-          copyFromCacheMetrics.getElapsedTimeInMilliseconds(), "ms");
-      System.out.printf("%-50s%-8.2f%s%n", "Read rate per second from local cache",
-          copyFromCacheMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
-      Files.delete(tempFile2);
+        // Start copying a single test file from local cache
+        Path tempFile2 = Files.createTempFile("temp-", ".dcm");
+        long startTime2 = System.currentTimeMillis();
+        Files.copy(firstTestFile, tempFile2, StandardCopyOption.REPLACE_EXISTING);
+        long endTime2 = System.currentTimeMillis();
+        Metrics copyFromCacheMetrics = Metrics.forConfiguration(Files.size(tempFile2))
+            .startTime(startTime2)
+            .endTime(endTime2);
+        System.out.printf("%-50s%-8d%s%n", "Copy time from local cache",
+            copyFromCacheMetrics.getElapsedTimeInMilliseconds(), "ms");
+        System.out.printf("%-50s%-8.2f%s%n", "Read rate per second from local cache",
+            copyFromCacheMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
+        Files.delete(tempFile2);
+      }
 
       // Start uploading a single test file
       Path outputStore = parameters.getUploadStore();

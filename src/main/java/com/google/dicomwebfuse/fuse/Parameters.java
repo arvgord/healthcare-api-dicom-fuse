@@ -82,7 +82,7 @@ public class Parameters {
     return enableDeletion;
   }
 
-  OS getOs() {
+  public OS getOs() {
     return os;
   }
 
