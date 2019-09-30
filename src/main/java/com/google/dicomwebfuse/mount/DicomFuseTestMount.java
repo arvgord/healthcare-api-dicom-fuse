@@ -32,7 +32,7 @@ import org.apache.logging.log4j.Logger;
 public class DicomFuseTestMount extends Mount<FuseTestArguments> {
 
   private static final int TIMEOUT = 10; // sec
-  private static final int DELAY = 1; // sec
+  private static final int DELAY = 3; // sec
   private static final Logger LOGGER = LogManager.getLogger();
 
   @Override
