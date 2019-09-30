@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -102,7 +103,7 @@ public class PerformanceTest {
 
       // Start uploading a single test file
       Path outputStore = parameters.getUploadStore();
-      Path outputFile = outputStore.resolve(tempFile1.getFileName());
+      Path outputFile = outputStore.resolve(UUID.randomUUID().toString());
       long startTime3 = System.currentTimeMillis();
       Files.copy(tempFile1, outputFile, StandardCopyOption.REPLACE_EXISTING);
       long endTime3 = System.currentTimeMillis();
@@ -121,7 +122,7 @@ public class PerformanceTest {
   }
 
   private void startMultithreadedPerformanceTest(Parameters parameters, List<Path> inputDicomFiles)
-      throws DicomFuseException {
+      throws DicomFuseException, IOException {
     // Start multithreaded upload test
     System.out.println();
     System.out.println();
@@ -129,27 +130,30 @@ public class PerformanceTest {
     System.out.printf("Started upload test for %d files, using %d threads", filesCount,
         parameters.getMaxThreads());
     System.out.println();
+
+    List<Path> tempFiles = new ArrayList<>();
+    for (Path inputDicomFile : inputDicomFiles) {
+      Path tempFile = Files.createTempFile("test-", ".dcm");
+      tempFile.toFile().deleteOnExit();
+      Files.copy(inputDicomFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
+      tempFiles.add(tempFile);
+    }
     try {
       for (int i = 1; i <= parameters.getIterations(); i++) {
         System.out.println();
         System.out.printf("Start iteration %d%n", i);
-        downloadCacher.clearCache();
         List<Future<Metrics>> futureList = new ArrayList<>();
         List<Metrics> results = new ArrayList<>();
         long commonStartTime = System.currentTimeMillis();
-        for (Path inputFile : inputDicomFiles) {
+        for (Path tempFile : tempFiles) {
           Callable<Metrics> callable = () -> {
-            Path tempFile = Files.createTempFile("test-", ".dcm");
-            Files.copy(inputFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
-            Path outputFile = parameters.getUploadStore().resolve(tempFile.getFileName());
+            Path outputFile = parameters.getUploadStore().resolve(UUID.randomUUID().toString());
             long startTime = System.currentTimeMillis();
             Files.copy(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
             long endTime = System.currentTimeMillis();
-            Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile))
+            return Metrics.forConfiguration(Files.size(tempFile))
                 .startTime(startTime)
                 .endTime(endTime);
-            Files.delete(tempFile);
-            return uploadMetrics;
           };
           Future<Metrics> future = executorService.submit(callable);
           futureList.add(future);
