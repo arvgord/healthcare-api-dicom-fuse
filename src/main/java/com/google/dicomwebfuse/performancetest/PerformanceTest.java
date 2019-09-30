@@ -38,10 +38,12 @@ public class PerformanceTest {
   private static final int BYTES_IN_GIBIBYTE = 1024 * 1024 * 1024;
   private final Parameters parameters;
   private final DownloadCacher downloadCacher;
+  private final ExecutorService executorService;
 
   public PerformanceTest(Parameters parameters, DownloadCacher downloadCacher) {
     this.parameters = parameters;
     this.downloadCacher = downloadCacher;
+    executorService = Executors.newFixedThreadPool(parameters.getMaxThreads());
   }
 
   public void startPerformanceTest() throws IOException, DicomFuseException {
@@ -67,7 +69,7 @@ public class PerformanceTest {
       System.out.printf("%s%d%n", "Start iteration ", i);
       downloadCacher.clearCache();
 
-      // Start download single file test
+      // Start downloading a single test file
       Path firstTestFile = inputDicomFiles.get(0);
       Path tempFile1 = Files.createTempFile("test-", ".dcm");
       tempFile1.toFile().deleteOnExit();
@@ -77,15 +79,14 @@ public class PerformanceTest {
       Metrics downloadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
           .startTime(startTime1)
           .endTime(endTime1);
-      System.out
-          .printf("%-50s%-8.2f%s%n", "File size is", downloadMetrics.getFileSizeInMebibyte(),
-              "MiB");
-      System.out
-          .printf("%-50s%-8d%s%n", "Download and read latency", downloadMetrics.getLatency(), "ms");
+      System.out.printf("%-50s%-8.2f%s%n", "File size is",
+          downloadMetrics.getFileSizeInMebibyte(), "MiB");
+      System.out.printf("%-50s%-8d%s%n", "Download and read time",
+              downloadMetrics.getElapsedTimeInMilliseconds(), "ms");
       System.out.printf("%-50s%-8.2f%s%n", "Download and read rate per second",
           downloadMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
 
-      // Start copy single file from local cache test
+      // Start copying a single test file from local cache
       Path tempFile2 = Files.createTempFile("temp-", ".dcm");
       long startTime2 = System.currentTimeMillis();
       Files.copy(firstTestFile, tempFile2, StandardCopyOption.REPLACE_EXISTING);
@@ -93,13 +94,13 @@ public class PerformanceTest {
       Metrics copyFromCacheMetrics = Metrics.forConfiguration(Files.size(tempFile2))
           .startTime(startTime2)
           .endTime(endTime2);
-      System.out.printf("%-50s%-8d%s%n", "Copy latency from local cache",
-          copyFromCacheMetrics.getLatency(), "ms");
+      System.out.printf("%-50s%-8d%s%n", "Copy time from local cache",
+          copyFromCacheMetrics.getElapsedTimeInMilliseconds(), "ms");
       System.out.printf("%-50s%-8.2f%s%n", "Read rate per second from local cache",
           copyFromCacheMetrics.getTransmissionRateInMibPerSec(), "MiB/s");
       Files.delete(tempFile2);
 
-      // Start upload single file test
+      // Start uploading a single test file
       Path outputStore = parameters.getUploadStore();
       Path outputFile = outputStore.resolve(tempFile1.getFileName());
       long startTime3 = System.currentTimeMillis();
@@ -108,12 +109,14 @@ public class PerformanceTest {
       Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
           .startTime(startTime3)
           .endTime(endTime3);
-      System.out.printf("%-50s%-8d%s%n", "Upload latency", uploadMetrics.getLatency(), "ms");
+      System.out.printf("%-50s%-8d%s%n", "Upload time",
+          uploadMetrics.getElapsedTimeInMilliseconds(), "ms");
       System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
           uploadMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
           uploadMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
 
-      printHeapMemoryUsage();
+      System.out.printf("%-50s%-8.2f%s%n", "Used heap memory",
+          (double) memoryMXBean.getHeapMemoryUsage().getUsed() / BYTES_IN_GIBIBYTE, "GiB");
     }
   }
 
@@ -126,57 +129,56 @@ public class PerformanceTest {
     System.out.printf("Started upload test for %d files, using %d threads", filesCount,
         parameters.getMaxThreads());
     System.out.println();
-    ExecutorService executorService = Executors.newFixedThreadPool(parameters.getMaxThreads());
-    for (int i = 1; i <= parameters.getIterations(); i++) {
-      System.out.println();
-      System.out.printf("Start iteration %d %n", i);
-      downloadCacher.clearCache();
-      List<Future<Metrics>> futureList = new ArrayList<>();
-      List<Metrics> results = new ArrayList<>();
-      long commonStartTime = System.currentTimeMillis();
-      for (Path inputFile : inputDicomFiles) {
-        Callable<Metrics> callable = () -> {
-          Path tempFile = Files.createTempFile("test-", ".dcm");
-          Files.copy(inputFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
-          Path outputFile = parameters.getUploadStore().resolve(tempFile.getFileName());
-          long startTime = System.currentTimeMillis();
-          Files.copy(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
-          long endTime = System.currentTimeMillis();
-          Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile))
-              .startTime(startTime)
-              .endTime(endTime);
-          Files.delete(tempFile);
-          return uploadMetrics;
-        };
-        Future<Metrics> future = executorService.submit(callable);
-        futureList.add(future);
-      }
-      for (Future<Metrics> future : futureList) {
-        try {
-          results.add(future.get());
-        } catch (InterruptedException | ExecutionException e) {
-          throw new DicomFuseException(e);
+    try {
+      for (int i = 1; i <= parameters.getIterations(); i++) {
+        System.out.println();
+        System.out.printf("Start iteration %d%n", i);
+        downloadCacher.clearCache();
+        List<Future<Metrics>> futureList = new ArrayList<>();
+        List<Metrics> results = new ArrayList<>();
+        long commonStartTime = System.currentTimeMillis();
+        for (Path inputFile : inputDicomFiles) {
+          Callable<Metrics> callable = () -> {
+            Path tempFile = Files.createTempFile("test-", ".dcm");
+            Files.copy(inputFile, tempFile, StandardCopyOption.REPLACE_EXISTING);
+            Path outputFile = parameters.getUploadStore().resolve(tempFile.getFileName());
+            long startTime = System.currentTimeMillis();
+            Files.copy(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
+            long endTime = System.currentTimeMillis();
+            Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile))
+                .startTime(startTime)
+                .endTime(endTime);
+            Files.delete(tempFile);
+            return uploadMetrics;
+          };
+          Future<Metrics> future = executorService.submit(callable);
+          futureList.add(future);
         }
+        for (Future<Metrics> future : futureList) {
+          try {
+            results.add(future.get());
+          } catch (InterruptedException | ExecutionException e) {
+            throw new DicomFuseException(e);
+          }
+        }
+        long commonEndTime = System.currentTimeMillis();
+        long fileSizesInBytes = 0;
+        for (Metrics metrics : results) {
+          fileSizesInBytes += metrics.getFileSizeInBytes();
+        }
+        Metrics commonMetrics = Metrics.forConfiguration(fileSizesInBytes)
+            .startTime(commonStartTime)
+            .endTime(commonEndTime);
+        System.out.printf("%-50s%-8.2f%s%n", "Total mebibytes uploaded",
+            commonMetrics.getFileSizeInMebibyte(), "MiB");
+        System.out.printf("%-50s%-8d%s%n", "Upload time",
+            commonMetrics.getElapsedTimeInMilliseconds(), "ms");
+        System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
+            commonMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
+            commonMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
       }
-      long commonEndTime = System.currentTimeMillis();
-      long fileSizesInBytes = 0;
-      for (Metrics metrics : results) {
-        fileSizesInBytes += metrics.getFileSizeInBytes();
-      }
-      Metrics commonMetrics = Metrics.forConfiguration(fileSizesInBytes)
-          .startTime(commonStartTime)
-          .endTime(commonEndTime);
-      System.out.printf("%-50s%-8.2f%s%n", "Total mebibytes uploaded",
-          commonMetrics.getFileSizeInMebibyte(), "MiB");
-      System.out.printf("%-50s%-8.2f%-8s%-8.2f%s%n", "Average transmission rate",
-          commonMetrics.getTransmissionRateInMibPerSec(), "MiB/s",
-          commonMetrics.getTransmissionRateInGibPerHour(), "GiB/h");
+    } finally {
+      executorService.shutdown();
     }
-    executorService.shutdown();
-  }
-
-  private void printHeapMemoryUsage() {
-    System.out.printf("%-50s%-8.2f%s%n", "Used heap memory",
-        (double) memoryMXBean.getHeapMemoryUsage().getUsed() / BYTES_IN_GIBIBYTE, "GiB");
   }
 }

@@ -40,20 +40,20 @@ public class Metrics {
     return this;
   }
 
-  long getLatency() {
+  long getElapsedTimeInMilliseconds() {
     return endTime - startTime;
   }
 
   double getTransmissionRateInMibPerSec() {
-    return getFileSizeInMebibyte() / getLatencyInSeconds();
+    return getFileSizeInMebibyte() / getElapsedTimeInSeconds();
   }
 
   double getTransmissionRateInGibPerHour() {
-    return getFileSizeInGibibyte() / (getLatencyInSeconds() / SECONDS_IN_HOUR);
+    return getFileSizeInGibibyte() / (getElapsedTimeInSeconds() / SECONDS_IN_HOUR);
   }
 
-  private double getLatencyInSeconds() {
-    return (double) getLatency() / (double) MILLISECONDS_IN_SECONDS;
+  private double getElapsedTimeInSeconds() {
+    return (double) getElapsedTimeInMilliseconds() / (double) MILLISECONDS_IN_SECONDS;
   }
 
   double getFileSizeInBytes() {
