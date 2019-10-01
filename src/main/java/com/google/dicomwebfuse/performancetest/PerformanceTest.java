@@ -109,7 +109,7 @@ public class PerformanceTest {
       Path outputStore = parameters.getUploadStore();
       Path outputFile = outputStore.resolve(UUID.randomUUID().toString());
       long startTime3 = System.currentTimeMillis();
-      Files.copy(tempFile1, outputFile, StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(tempFile1, outputFile);
       long endTime3 = System.currentTimeMillis();
       Metrics uploadMetrics = Metrics.forConfiguration(Files.size(tempFile1))
           .startTime(startTime3)
@@ -126,7 +126,7 @@ public class PerformanceTest {
   }
 
   private void startMultithreadedPerformanceTest(Parameters parameters, List<Path> inputDicomFiles)
-      throws DicomFuseException, IOException {
+      throws DicomFuseException {
     // Start multithreaded upload test
     System.out.println();
     System.out.println();
@@ -166,7 +166,7 @@ public class PerformanceTest {
           Callable<Metrics> callable = () -> {
             Path outputFile = parameters.getUploadStore().resolve(UUID.randomUUID().toString());
             long startTime = System.currentTimeMillis();
-            Files.copy(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(tempFile, outputFile);
             long endTime = System.currentTimeMillis();
             return Metrics.forConfiguration(Files.size(tempFile))
                 .startTime(startTime)
