@@ -66,6 +66,7 @@ public class DicomFuseTestMount extends Mount<FuseTestArguments> {
         }
       }
     };
-    new Thread(testRunnable).start();
+    Thread thread = new Thread(testRunnable);
+    thread.start();
   }
 }
